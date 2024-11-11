@@ -7,14 +7,16 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit, OnDestroy {
-  public x: number = 0;
-  public y: number = 0;
+  public l: number = 0;
+  public r: number = 0;
   private gamepadIndex: number | null = null;
   private gamepadPollInterval: any;
 
   readonly WHEEL_ID: number = 0
   readonly RIGHT_PEDAL_ID: number = 6
   readonly LEFT_PEDAL_ID: number = 5
+
+  readonly POLL_INTERVAL_MS: number = 100
 
 
   ngOnInit(): void {
@@ -27,13 +29,13 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-  startGamepadDetection(): void {
+  startSteeringWheelDetection(): void {
     console.log("Gamepad detection started");
 
     window.addEventListener('gamepadconnected', (event: any) => {
       this.gamepadIndex = event.gamepad.index;
       console.log(`Gamepad connected at index ${this.gamepadIndex}`);
-      this.startGamepadPolling();
+      this.startSteeringWheelPolling();
     });
 
     window.addEventListener('gamepaddisconnected', (event: any) => {
@@ -45,7 +47,7 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
-  startGamepadPolling(): void {
+  startSteeringWheelPolling(): void {
     console.log("Started polling");
 
     if (this.gamepadPollInterval) {
@@ -57,11 +59,17 @@ export class AppComponent implements OnInit, OnDestroy {
 
       const gamepad = navigator.getGamepads()[this.gamepadIndex];
       if (gamepad) {
-        this.x = Math.round(gamepad.axes[this.WHEEL_ID] * 255);  // -1.0 - 1.0 range
-        this.y = Math.round((gamepad.axes[this.RIGHT_PEDAL_ID] - gamepad.axes[this.LEFT_PEDAL_ID]) * (255 / 2));  // -2.0 - 2.0 range
+        let x: number = gamepad.axes[this.WHEEL_ID]  // -1.0 - 1.0 range
+        this.l = Math.round((gamepad.axes[this.RIGHT_PEDAL_ID] - gamepad.axes[this.LEFT_PEDAL_ID]) * (255 / 2));  // -2.0 - 2.0 range
+        this.r = this.l;
 
-        console.log(`Steering (X): ${this.x}, Pedals (Y): ${this.y}`);
+        if (x > 0)
+          this.r = Math.round(this.r * (1 - x))
+        else if (x < 0)
+          this.l = Math.round(this.l * (1 - Math.abs(x)))
+
+        console.log(`${this.l} : ${this.r}`);
       }
-    }, 100);  // Poll every 100ms
+    }, this.POLL_INTERVAL_MS);
   }
 }
